@@ -46,7 +46,7 @@ class TransformerModel(nn.Module):
         self.freq = 2
         self.ind = 0
         configuration = GPT2Config()
-        configuration.block_size = self.freq * n_positions + 1
+        configuration.block_size = self.freq * n_positions + 1  # 203
         configuration.n_layer = n_layer
         configuration.n_head = n_head
         configuration.n_embd = n_embd
@@ -56,13 +56,15 @@ class TransformerModel(nn.Module):
         self.configuration = configuration
 
         self.n_positions = n_positions  # n = points in this setting
-        self.n_dims = n_dims  # input dimension, d_in
-        self.n_embd = n_embd  # d
-        self.n_layer = n_layer
+        self.n_dims = n_dims  # input dimension, d_in   # 20
+        self.n_embd = n_embd  # d                       # 256
+        self.n_layer = n_layer                          # 12
         self._pred_type = pred_type
 
         self._read_in = nn.Linear(n_dims, n_embd)
+
         self._backbone = GPT2Model(self.configuration)
+
         if self._pred_type == 'regression':
             self._read_out = nn.Linear(n_embd, 1)
         elif self._pred_type == 'classification':
@@ -175,7 +177,7 @@ class TransformerModelLooped(TransformerModel):
         :param n_loops: int
         :return:
         """
-        B, n, d_in = xs.shape   # [32, 101, 20]
+        B, n, d_in = xs.shape   # [32, 101, 20]  /// batch size, sequence length, embedding dimensionality (n_embd)
         zs = self._combine(xs, ys)  # [B, n, d_in], [B, n], [B, n] -> [B, 2n, d_in + 1]    ===> [32, 202, 20]
         embeds = self._read_in(zs)  # [B, 2n, d_in + 1] -> [B, 2n, d]   # [32, 202, 256]
         print(f">>>>> embeds.shape ...is... {embeds.shape}")
@@ -196,7 +198,7 @@ class TransformerModelLooped(TransformerModel):
                 output = self.f(output, embeds)
                 prediction = self._read_out(output)  # [B, 2n, d] -> [B, 2n, 1]
                 if self._pred_type == 'regression':
-                    y = prediction[:, self.ind::self.freq, 0]
+                    y = prediction[:, self.ind::self.freq, 0]   # [B, n]   # get the predicted value of y
                 elif self._pred_type == 'classification':
                     y = prediction[:, self.ind::self.freq]
                 else:

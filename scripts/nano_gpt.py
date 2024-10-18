@@ -124,7 +124,7 @@ class Block(nn.Module):
 
 @dataclass
 class GPT2Config:
-    block_size: int = 1024
+    block_size: int = 1024   # length of input context
     vocab_size: int = 50304  # GPT-2 vocab_size of 50257, padded up to nearest multiple of 64 for efficiency
     n_layer: int = 12
     n_head: int = 12
