@@ -88,7 +88,7 @@ class TransformerModel(nn.Module):
             ),
             axis=2,
         )  # [32, 101, 20]
-        print(f">>> ys_b_wide.shape ...is... {ys_b_wide.shape}")
+        # print(f">>> ys_b_wide.shape ...is... {ys_b_wide.shape}")
         zs = torch.stack((xs_b, ys_b_wide), dim=2)
         zs = zs.view(B, self.freq * n, d)  # [32, 202, 20]
         return zs
@@ -181,7 +181,7 @@ class TransformerModelLooped(TransformerModel):
         B, n, d_in = xs.shape  # [32, 101, 20]  /// batch size, sequence length, embedding dimensionality (n_embd)
         zs = self._combine(xs, ys)  # [B, n, d_in], [B, n], [B, n] -> [B, 2n, d_in + 1]    ===> [32, 202, 20]
         embeds = self._read_in(zs)  # [B, 2n, d_in + 1] -> [B, 2n, d]   # [32, 202, 256]
-        print(f">>>>> embeds.shape ...is... {embeds.shape}")
+        # print(f">>>>> embeds.shape ...is... {embeds.shape}")
 
         if self.loop_func in ['z=f(x+z)']:
             output = torch.zeros_like(embeds)  # also of shape [B, 2n, d]
