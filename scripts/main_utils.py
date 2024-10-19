@@ -69,8 +69,8 @@ def load_pretrained_model(args, model, optimizer, curriculum, device):
             curriculum.update()
         del state
         del state_dict
-    elif args.model.pretrained_path is not None:
-        state = torch.load(args.model.pretrained_path, map_location=device)
+    elif args.loop_model.pretrained_path is not None:
+        state = torch.load(args.loop_model.pretrained_path, map_location=device)
         if "model_state_dict" in state.keys():
             state_dict = state["model_state_dict"]  # rm_orig_mod(state["model_state_dict"])
             model.load_state_dict(state_dict, strict=False)
@@ -88,7 +88,7 @@ def load_pretrained_model(args, model, optimizer, curriculum, device):
                 step = s[s.find('model_') + 6:s.find('.pt')]
                 return int(step)
 
-            num_train_step = find_train_step(args.model.pretrained_path)
+            num_train_step = find_train_step(args.loop_model.pretrained_path)
             starting_step = num_train_step
             for i in range(num_train_step + 1):
                 curriculum.update()

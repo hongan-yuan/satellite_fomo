@@ -31,7 +31,7 @@ def calculate_gradient_norm(model):
 
 
 def train_step(args, curriculum, model, xs, ys, optimizer, ctx, scaler):
-    if args.model.family in ['gpt2', 'gpt2_tying']:
+    if args.loop_model.family in ['gpt2', 'gpt2_tying']:
         if ctx is not None:
             with ctx:
                 y_pred = model(xs, ys, add_inputs_embeds=args.training.add_inputs_embeds)  # [B, n]
@@ -41,7 +41,7 @@ def train_step(args, curriculum, model, xs, ys, optimizer, ctx, scaler):
             y_pred = model(xs, ys, add_inputs_embeds=args.training.add_inputs_embeds)  # [B, n]
             # list of [B, n], length K + 1, get rid of the 0-th one
             loss = (ys - y_pred).square().mean()  # auto on both K and n (number of in context samples)
-    elif args.model.family in ['gpt2_loop']:
+    elif args.loop_model.family in ['gpt2_loop']:
         n_loops = curriculum.n_loops  # K
         if ctx is not None:
             with ctx:
@@ -95,7 +95,7 @@ def main(args, device):
     )
 
     torch.manual_seed(args.training.seed)
-    model = build_model(args.model)
+    model = build_model(args.loop_model)
     # model = torch.compile(model)
 
     model.to(device)
@@ -114,18 +114,18 @@ def main(args, device):
         from main_utils import gen_dataloader
         task_sampler = get_task_sampler(
             task_name=args.training.task_name,
-            batch_size=args.training.batch_size,
-            n_points=curriculum.n_points,
-            n_dims=args.model.n_dims,
-            n_dims_truncated=curriculum.n_dims_truncated,
+            batch_size=args.training.BATCH_SIZE,
+            n_points=curriculum.CONTEXT_SIZE,
+            n_dims=args.loop_model.INPUT_DIMS,
+            n_dims_truncated=curriculum.N_DIMS_TRUNCATED,
             device=device,
             sparsity=args.training.sparsity,
         )
         train_loader = gen_dataloader(task_sampler, args.training.train_size,
-                                      args.training.batch_size)
+                                      args.training.BATCH_SIZE)
         train_iter = iter(train_loader)
         test_loader = gen_dataloader(task_sampler, args.training.test_size,
-                                     args.training.batch_size)
+                                     args.training.BATCH_SIZE)
 
     pbar = tqdm(range(starting_step, args.training.train_steps))
     for i in pbar:
@@ -138,10 +138,10 @@ def main(args, device):
         else:
             task_sampler = get_task_sampler(
                 task_name=args.training.task_name,
-                batch_size=args.training.batch_size,
-                n_points=curriculum.n_points,
-                n_dims=args.model.n_dims,
-                n_dims_truncated=curriculum.n_dims_truncated,
+                batch_size=args.training.BATCH_SIZE,
+                n_points=curriculum.CONTEXT_SIZE,
+                n_dims=args.loop_model.INPUT_DIMS,
+                n_dims_truncated=curriculum.N_DIMS_TRUNCATED,
                 device=device,
                 sparsity=args.training.sparsity,
             )
@@ -152,7 +152,7 @@ def main(args, device):
         loss, output, total_norm, grad_norm_dict = train_step(args, curriculum, model, xs, ys, optimizer, ctx, scaler)
 
         # EVALUATION ======================================
-        point_wise_tags = list(range(curriculum.n_points))  # [0, 1, 2, ..., n-1]
+        point_wise_tags = list(range(curriculum.CONTEXT_SIZE))  # [0, 1, 2, ..., n-1]
         if i % args.wandb.log_every_steps == 0:
             point_wise_loss = (output - ys).square().mean(dim=0)  # [n,]
             if args.training.use_fixed_dataset:
@@ -160,9 +160,9 @@ def main(args, device):
                 with torch.no_grad():
                     for batch in test_loader:
                         xs, ys = batch['x'].to(device), batch['y'].to(device)
-                        if args.model.family in ['gpt2']:
+                        if args.loop_model.family in ['gpt2']:
                             output = model(xs, ys)  # [B,]
-                        elif args.model.family in ['gpt2_loop']:
+                        elif args.loop_model.family in ['gpt2_loop']:
                             n_loops = curriculum.n_loops  # K
                             y_pred_list = model(xs, ys, 0, n_loops)
                             output = y_pred_list[-1]  # [B, n]
@@ -179,8 +179,8 @@ def main(args, device):
                     "pointwise/loss": dict(
                         zip(point_wise_tags, point_wise_loss.detach().cpu().numpy())
                     ),
-                    "n_points": curriculum.n_points,
-                    "n_dims": curriculum.n_dims_truncated,
+                    "n_points": curriculum.CONTEXT_SIZE,
+                    "n_dims": curriculum.N_DIMS_TRUNCATED,
                     "lr": optimizer.param_groups[0]['lr'],
                 },
                 step=i,

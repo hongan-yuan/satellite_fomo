@@ -17,32 +17,35 @@ import torch.nn as nn
 import copy
 import matplotlib.pyplot as plt
 import torch.nn.functional as F
-sys.path.append('../scripts')
-from models import TransformerModelLooped
-from nano_gpt import GPT2Model, GPT2Config
 from jupyter_notebooks.utils import aggregate_metrics, get_model, eval_unlooped_model, eval_looped_model
+
+sys.path.append('../scripts')
+from nano_gpt import GPT2Model, GPT2Config
+from models import TransformerModelLooped
 
 torch.manual_seed(42)
 device = torch.device('cuda:0')
-fig_hparam = {
-    'figsize': (8, 5),
-    'labelsize': 28,
-    'ticksize': 20,
-    'linewidth': 5,
-    'fontsize': 15,
-    'titlesize': 20,
-    'markersize': 15
-}
+# device = 'cpu'
 
-# font specification
-fontdict = {
-    'family': 'serif',
-    'size': fig_hparam['fontsize'],
-}
+"""
+"""
+SAMPLE_SIZE = 1280
+BATCH_SIZE = 32
+CONTEXT_SIZE = 101
+INPUT_DIMS = 20
+#  -----------------------------------------------------------------------------
+N_DIMS_TRUNCATED = 20
+#  -----------------------------------------------------------------------------
+LOOP_ITER_NUM = 200
+EMBEDDING_DIM = 256
+N_HEAD = 8
+N_LAYER = 12
+N_LAYER_LOOP = 1
 
 
 class DecisionTree:
-    def __init__(self, batch_size, n_points, n_dims, n_dims_truncated, device, depth=4):
+    def __init__(self,
+                 batch_size, n_points, n_dims, n_dims_truncated, device, depth=4):
         """
         batch_size: 1280
         n_points: 101
@@ -104,46 +107,57 @@ class DecisionTree:
 
 
 if __name__ == '__main__':
-    sample_size = 1280
-    batch_size = 32
-    n_points = 101
-    n_dims_truncated = 20
-    n_dims = 20
     result_dir = '../results2/decision_tree_loop'
     run_id = '0926061635-DT_loop_L1_endsb70_T15-0602'
 
-    real_task = DecisionTree(
-        batch_size=sample_size,  # 1280
-        n_points=n_points,  # 101
-        n_dims=n_dims,  # 20
-        n_dims_truncated=n_dims_truncated,  # 20
+    decision_tree_task = DecisionTree(
+        batch_size=SAMPLE_SIZE,  # 1280
+        n_points=CONTEXT_SIZE,  # 101
+        n_dims=INPUT_DIMS,  # 20
+        n_dims_truncated=N_DIMS_TRUNCATED,  # 20
         device=torch.device('cuda:0')
     )
 
-    xs, ys = real_task.xs, real_task.ys
-
-    model = TransformerModelLooped(
-        n_dims=20,
-        n_positions=101,
-        n_embd=256,
-        n_layer=12,
-        n_head=8
+    loop_model = TransformerModelLooped(
+        n_dims=INPUT_DIMS,
+        n_positions=CONTEXT_SIZE,
+        n_embd=EMBEDDING_DIM,
+        n_layer=N_LAYER_LOOP,
+        n_head=N_HEAD
     )
     step = -1
-    model = get_model(model, result_dir, run_id, step)
-    model = model.to(device)
-    T = 200
+
+    loop_model = get_model(loop_model, result_dir, run_id, step)
+    loop_model = loop_model.to(device)
+    xs, ys = decision_tree_task.xs, decision_tree_task.ys
+
+    xs_train = xs[0: 4]
+    ys_train = ys[0: 4]
+
+    result_y = loop_model(xs_train, ys_train, 0, LOOP_ITER_NUM)  # [1280, 101]
+    print(result_y.shape)
+    """
     with torch.no_grad():
         y_pred_total = torch.zeros(1280, 101)  # [N, n]
-        y_pred_last = torch.zeros(1280, T)  # [N, T]
-        for batch_idx in range(sample_size // batch_size):
-            xs_train = xs[batch_idx * batch_size: (batch_idx + 1) * batch_size]
-            ys_train = ys[batch_idx * batch_size: (batch_idx + 1) * batch_size]
-            y_pred_list = model(xs_train, ys_train, 0, T)  # list of [B, n], length T
-            y_pred_total[batch_idx * batch_size: (batch_idx + 1) * batch_size] = y_pred_list[-1].detach()
-            tmp_list = [y_pred[:, [-1]] for y_pred in y_pred_list]  # list of [B, 1], length T
-            tmp_array = torch.cat(tmp_list, dim=1)  # [B, T]
-            y_pred_last[batch_idx * batch_size: (batch_idx + 1) * batch_size] = tmp_array
-        err = (y_pred_total - ys.cpu()).square()  # [n,]
-        loop_err = (y_pred_last - ys.cpu()[:, [-1]]).square()  # [N, T] - [N, 1]
-    print(err)
+        y_pred_last = torch.zeros(1280, 200)  # [N, T]  T refers to the number of loops.
+        for batch_idx in range(1280 // 32):
+            xs_train = xs[batch_idx * 32: (batch_idx + 1) * 32]
+            ys_train = ys[batch_idx * 32: (batch_idx + 1) * 32]
+            # Record the results of each loop iteration.
+            y_pred_list = loop_model(xs_train, ys_train, 0, 200)  # list of [B, n], length T
+
+            #  get the last y_value from the list whose length equals to 101
+            last_y_pred_list = [y_pred[:, [-1]] for y_pred in y_pred_list]  # list of [B, 1], length T,
+            # Record the last y_value for each looped iteration can contact
+            last_y_pred_array = torch.cat(last_y_pred_list, dim=1)  # [B, T]
+            print(f">>>>>> ... last_y_pred_array.shape ..is.. {last_y_pred_array.shape}")
+            y_pred_last[batch_idx * 32: (batch_idx + 1) * 32] = last_y_pred_array
+
+            # The computation result of last iteration for (xs & ys) ==> the predicted ys' ==>  y_pred_list[-1].detach()
+            # y_pred_list[-1].shape ... is torch.Size([32, 101])
+            y_pred_total[batch_idx * 32: (batch_idx + 1) * 32] = y_pred_list[-1].detach()
+            print(f"y_pred_total.length ... is {len(y_pred_total)}")
+
+        total_err = (y_pred_total - ys.cpu()).square()  # [n,]
+        loop_iter_err = (y_pred_last - ys.cpu()[:, [-1]]).square()  # [N, T] - [N, 1]
+        """

@@ -7,7 +7,7 @@ MAX_NUM_CLASS = 2  # for openML classification task
 def build_model(conf):
     if conf.family == "gpt2":
         model = TransformerModel(
-            n_dims=conf.n_dims,
+            n_dims=conf.INPUT_DIMS,
             n_positions=conf.n_positions,
             n_embd=conf.n_embd,
             n_layer=conf.n_layer,
@@ -16,7 +16,7 @@ def build_model(conf):
         )
     elif conf.family == 'gpt2_loop':
         model = TransformerModelLooped(
-            n_dims=conf.n_dims,
+            n_dims=conf.INPUT_DIMS,
             n_positions=conf.n_positions,
             n_embd=conf.n_embd,
             n_layer=conf.n_layer,
@@ -26,7 +26,7 @@ def build_model(conf):
         )
     elif conf.family == 'gpt2_tying':
         model = TransformerModelTying(
-            n_dims=conf.n_dims,
+            n_dims=conf.INPUT_DIMS,
             n_positions=conf.n_positions,
             n_embd=conf.n_embd,
             n_layer=conf.n_layer,

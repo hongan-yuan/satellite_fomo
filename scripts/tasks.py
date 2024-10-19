@@ -165,7 +165,8 @@ class Relu2nnRegression(Task):
 
 
 class DecisionTree(Task):
-    def __init__(self, batch_size, n_points, n_dims, n_dims_truncated, device, sparsity=None, depth=4):
+    def __init__(self,
+                 batch_size, n_points, n_dims, n_dims_truncated, device, sparsity=None, depth=4):
 
         super(DecisionTree, self).__init__(n_dims, n_dims_truncated, n_points, batch_size)
         self.depth = depth
@@ -173,21 +174,27 @@ class DecisionTree(Task):
         # We represent the tree using an array (tensor). Root node is at index 0, its 2 children at index 1 and 2...
         # dt_tensor stores the coordinate used at each node of the decision tree.
         # Only indices corresponding to non-leaf nodes are relevant
-        self.dt_tensor = torch.randint(
+        self.decisionTree_tensor = torch.randint(
             low=0, high=n_dims, size=(batch_size, 2 ** (depth + 1) - 1)
         )
 
         # Target value at the leaf nodes.
         # Only indices corresponding to leaf nodes are relevant.
-        self.target_tensor = torch.randn(self.dt_tensor.shape)
+        self.target_tensor = torch.randn(self.decisionTree_tensor.shape)
 
         self.xs = torch.randn(batch_size, n_points, n_dims, device=device)  # [B, n, d]
         self.ys = self.evaluate(self.xs)
 
     def evaluate(self, xs_b):
-        dt_tensor = self.dt_tensor.to(xs_b.device)
+        dt_tensor = self.decisionTree_tensor.to(xs_b.device)
         target_tensor = self.target_tensor.to(xs_b.device)
-        ys_b = torch.zeros(xs_b.shape[0], xs_b.shape[1], device=xs_b.device)
+
+        ys_b = torch.zeros(
+            xs_b.shape[0],
+            xs_b.shape[1],
+            device=xs_b.device
+        )
+
         for i in range(xs_b.shape[0]):
             xs_bool = xs_b[i] > 0
             # If a single decision tree present, use it for all the xs in the batch.

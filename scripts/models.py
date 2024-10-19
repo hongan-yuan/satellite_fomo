@@ -8,7 +8,7 @@ MAX_NUM_CLASS = 2  # for openML classification task
 def build_model(conf):
     if conf.family == "gpt2":
         model = TransformerModel(
-            n_dims=conf.n_dims,
+            n_dims=conf.INPUT_DIMS,
             n_positions=conf.n_positions,
             n_embd=conf.n_embd,
             n_layer=conf.n_layer,
@@ -17,7 +17,7 @@ def build_model(conf):
         )
     elif conf.family == 'gpt2_loop':
         model = TransformerModelLooped(
-            n_dims=conf.n_dims,
+            n_dims=conf.INPUT_DIMS,
             n_positions=conf.n_positions,
             n_embd=conf.n_embd,
             n_layer=conf.n_layer,
@@ -27,7 +27,7 @@ def build_model(conf):
         )
     elif conf.family == 'gpt2_tying':
         model = TransformerModelTying(
-            n_dims=conf.n_dims,
+            n_dims=conf.INPUT_DIMS,
             n_positions=conf.n_positions,
             n_embd=conf.n_embd,
             n_layer=conf.n_layer,
@@ -58,7 +58,7 @@ class TransformerModel(nn.Module):
         self.n_positions = n_positions  # n = points in this setting
         self.n_dims = n_dims  # input dimension, d_in   # 20
         self.n_embd = n_embd  # d                       # 256
-        self.n_layer = n_layer                          # 12
+        self.n_layer = n_layer  # 12
         self._pred_type = pred_type
 
         self._read_in = nn.Linear(n_dims, n_embd)
@@ -177,7 +177,8 @@ class TransformerModelLooped(TransformerModel):
         :param n_loops: int
         :return:
         """
-        B, n, d_in = xs.shape   # [32, 101, 20]  /// batch size, sequence length, embedding dimensionality (n_embd)
+        y_result = torch.zeros(ys.shape)
+        B, n, d_in = xs.shape  # [32, 101, 20]  /// batch size, sequence length, embedding dimensionality (n_embd)
         zs = self._combine(xs, ys)  # [B, n, d_in], [B, n], [B, n] -> [B, 2n, d_in + 1]    ===> [32, 202, 20]
         embeds = self._read_in(zs)  # [B, 2n, d_in + 1] -> [B, 2n, d]   # [32, 202, 256]
         print(f">>>>> embeds.shape ...is... {embeds.shape}")
@@ -198,14 +199,15 @@ class TransformerModelLooped(TransformerModel):
                 output = self.f(output, embeds)
                 prediction = self._read_out(output)  # [B, 2n, d] -> [B, 2n, 1]
                 if self._pred_type == 'regression':
-                    y = prediction[:, self.ind::self.freq, 0]   # [B, n]   # get the predicted value of y
+                    y_result = prediction[:, self.ind::self.freq, 0]  # [B, n]   # get the predicted value of y
                 elif self._pred_type == 'classification':
-                    y = prediction[:, self.ind::self.freq]
+                    y_result = prediction[:, self.ind::self.freq]
                 else:
                     raise NotImplementedError
-                pred_list.append(y)
+                # pred_list.append(y_result)
             if not self.print_flag:
                 print(idx)
                 self.print_flag = True
-        print(f">>>>> pred_list[0].shape ...is... {pred_list[0].shape}")    # [32, 101]
-        return pred_list
+        # print(f">>>>> pred_list[0].shape ...is... {pred_list[0].shape}")    # [32, 101]
+        # return pred_list
+        return y_result

@@ -25,7 +25,7 @@ NUM_POINTS = 41
 
 
 def train_step(args, curriculum, model, xs, ys, optimizer, ctx, scaler, eval=False):
-    if args.model.family in ['gpt2', 'gpt2_tying']:
+    if args.loop_model.family in ['gpt2', 'gpt2_tying']:
         B, n = ys.shape
         if ctx is not None:
             with ctx:
@@ -46,7 +46,7 @@ def train_step(args, curriculum, model, xs, ys, optimizer, ctx, scaler, eval=Fal
             else:
                 loss = F.cross_entropy(y_pred.view(B * n, -1), ys.view(B * n).long())
                 acc = 0
-    elif args.model.family in ['gpt2_loop']:
+    elif args.loop_model.family in ['gpt2_loop']:
         n_loops = curriculum.n_loops  # K
         B = ys.shape[0]
         if ctx is not None:
@@ -94,7 +94,7 @@ def train_step(args, curriculum, model, xs, ys, optimizer, ctx, scaler, eval=Fal
 def get_batch(args, dataset_id, openml_datasets, device):
 
     X, y = openml_datasets[dataset_id]['X'], openml_datasets[dataset_id]['y']
-    batch_size = min(args.training.batch_size, int(X.shape[0] // NUM_POINTS) - 1)
+    batch_size = min(args.training.BATCH_SIZE, int(X.shape[0] // NUM_POINTS) - 1)
     batch_ids = random.sample(range(0, X.shape[0]), batch_size * NUM_POINTS)
     xs, ys = X[batch_ids], y[batch_ids]
     xs, ys = torch.tensor(xs).to(device), torch.tensor(ys).to(device)
@@ -104,7 +104,7 @@ def get_batch(args, dataset_id, openml_datasets, device):
     B, n, d_x = xs.shape
     xs = torch.cat(
         [
-            torch.zeros(B, n, args.model.n_dims - d_x, device=device),
+            torch.zeros(B, n, args.loop_model.INPUT_DIMS - d_x, device=device),
             xs,
         ],
         axis=2,
@@ -126,7 +126,7 @@ def main(args, device):
         ctx = None
     ################################################
     torch.manual_seed(args.training.seed)
-    model = build_model(args.model)
+    model = build_model(args.loop_model)
     # model = torch.compile(model)
 
     model.to(device)
