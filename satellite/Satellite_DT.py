@@ -133,8 +133,8 @@ if __name__ == '__main__':
 
     xs_train = xs[0: 4]
     ys_train = ys[0: 4]
-
-    result_y = loop_model(xs_train, ys_train, 0, LOOP_ITER_NUM)  # [1280, 101]
+    with torch.no_grad():
+        result_y = loop_model(xs_train, ys_train, 0, LOOP_ITER_NUM)  # [1280, 101]
     print(result_y.shape)
     """
     with torch.no_grad():
