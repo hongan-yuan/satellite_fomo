@@ -1,14 +1,12 @@
+import os
+import warnings
+
 import torch
 import torch.nn as nn
-from transformers import GPT2Model, GPT2Config
-from tqdm import tqdm
-from sklearn.svm import LinearSVC
-from sklearn.linear_model import LogisticRegression, Lasso, Ridge
-import warnings
-from sklearn import tree
 import xgboost as xgb
-
-import os
+# from sklearn import tree
+# from sklearn.linear_model import Lasso, Ridge
+from tqdm import tqdm
 
 relevant_model_names = {
     "linear_regression": [
@@ -148,12 +146,12 @@ def get_relevant_baselines(task_name):
             (NNModel, {"n_neighbors": 3}),
             (AveragingModel, {}),
         ],
-        "sparse_linear_regression": [
-                                        (LeastSquaresModel, {}),
-                                        (NNModel, {"n_neighbors": 3}),
-                                        (AveragingModel, {}),
-                                    ]
-                                    + [(LassoModel, {"alpha": alpha}) for alpha in [1, 0.3, 0.1, 0.03, 0.01, 0.003, 0.001, 0.0003, 0.0001]],
+        # "sparse_linear_regression": [
+        #                                 (LeastSquaresModel, {}),
+        #                                 (NNModel, {"n_neighbors": 3}),
+        #                                 (AveragingModel, {}),
+        #                             ]
+        #                             + [(LassoModel, {"alpha": alpha}) for alpha in [1, 0.3, 0.1, 0.03, 0.01, 0.003, 0.001, 0.0003, 0.0001]],
         "relu_2nn_regression": [
             (LeastSquaresModel, {}),
             (NNModel, {"n_neighbors": 3}),
@@ -177,8 +175,8 @@ def get_relevant_baselines(task_name):
         "decision_tree": [
             (LeastSquaresModel, {}),
             (NNModel, {"n_neighbors": 3}),
-            (DecisionTreeModel, {"max_depth": 4}),
-            (DecisionTreeModel, {"max_depth": None}),
+            # (DecisionTreeModel, {"max_depth": 4}),
+            # (DecisionTreeModel, {"max_depth": None}),
             (XGBoostModel, {}),
             (AveragingModel, {}),
         ],
@@ -253,7 +251,7 @@ class LeastSquaresModel:
                 preds.append(torch.zeros_like(ys[:, 0]))  # predict zero for first point
                 continue
             train_xs, train_ys = xs[:, :i], ys[:, :i]
-            test_x = xs[:, i : i + 1]
+            test_x = xs[:, i: i + 1]
 
             ws, _, _, _ = torch.linalg.lstsq(
                 train_xs, train_ys.unsqueeze(2), driver='gels'
@@ -293,6 +291,7 @@ class AveragingModel:
         return torch.stack(preds, dim=1)
 
 
+"""
 # Lasso regression (for sparse linear regression).
 # Seems to take more time as we decrease alpha.
 class LassoModel:
@@ -349,8 +348,8 @@ class LassoModel:
             preds.append(pred)
 
         return torch.stack(preds, dim=1)
-
-
+"""
+"""
 # Lasso regression (for sparse linear regression).
 # Seems to take more time as we decrease alpha.
 class RidgeRegressionModel:
@@ -408,6 +407,7 @@ class RidgeRegressionModel:
             preds.append(pred)
 
         return torch.stack(preds, dim=1)
+"""
 
 
 class NeuralNetwork(nn.Module):
@@ -558,6 +558,7 @@ class GDModel:
         return torch.stack(preds, dim=1)
 
 
+"""
 class DecisionTreeModel:
     def __init__(self, max_depth=None):
         self.max_depth = max_depth
@@ -595,6 +596,7 @@ class DecisionTreeModel:
             preds.append(pred)
 
         return torch.stack(preds, dim=1)
+"""
 
 
 class XGBoostModel:
