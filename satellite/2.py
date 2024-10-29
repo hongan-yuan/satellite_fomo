@@ -1,27 +1,57 @@
-# -*- coding: utf-8 -*-
-"""
-@Time : 
-@Author: Honggang Yuan
-@Email: hn_yuanhg@163.com
-Description:
-    
-"""
-import torch
+class ListNode:
+    def __init__(self, value=0, next=None):
+        self.value = value
+        self.next = next
 
-y_pred_list = []
-y_pred_r = torch.randn(32, 101)
-y_pred = y_pred_r[:, [-1]]
-for i in range(200):
-    y_pred_list.append(torch.randn(32, 101))
 
-last_y_pred_list = [y_pred[:, [-1]] for y_pred in y_pred_list]   # list of [B, 1], length T,
-last_y_pred_array = torch.cat(last_y_pred_list, dim=1)  # [B, T]
+def twist_linked_list(head):
+    if not head or not head.next:
+        return head
 
-print(f"y_pred_list[0] ..is.. {y_pred_list[0]}")
-print(f"last_y_pred_list[0] ..is.. {last_y_pred_list[0]}")
-print(f"last_y_pred_list[1] ..is.. {last_y_pred_list[1]}")
-print(f"last_y_pred_array.shape ..is.. {last_y_pred_array.shape}")
-print(f"last_y_pred_array[0] ..is.. {last_y_pred_array[0]}")
-print(f"last_y_pred_list[0].shape ..is.. {last_y_pred_list[0].shape}")
-# print(f"y_pred_r.shape is .. {y_pred_r.shape}")
-# print(f"y_pred.shape is .. {y_pred.shape}")
+    # 将链表节点存入数组
+    nodes = []
+    current = head
+    while current:
+        nodes.append(current)
+        current = current.next
+
+    # 创建新链表
+    new_head = ListNode(0)
+    new_current = new_head
+    left, right = 0, len(nodes) - 1
+
+    # 交替插入节点
+    while left <= right:
+        if left == right:
+            new_current.next = nodes[left]
+            new_current = new_current.next
+        else:
+            new_current.next = nodes[right]
+            new_current = new_current.next
+            new_current.next = nodes[left]
+            new_current = new_current.next
+        left += 1
+        right -= 1
+
+    new_current.next = None
+    return new_head.next
+
+
+# 测试代码
+def test_twist_linked_list(values):
+    head = ListNode(values[0])
+    current = head
+    for value in values[1:]:
+        current.next = ListNode(value)
+        current = current.next
+
+    result = twist_linked_list(head)
+    output = []
+    while result:
+        output.append(result.value)
+        result = result.next
+    print("{" + ", ".join(map(str, output)) + "}")
+
+
+# 测试示例
+test_twist_linked_list([1, 2, 3, 4, 5])  # 输出: {5, 3, 1, 2, 4}
