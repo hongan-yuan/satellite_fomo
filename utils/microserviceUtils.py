@@ -118,12 +118,7 @@ def construct_satellite_microservice_chain_colocation_di_graph(
             # post_service = user_request_service_chain[i + 1]  # service_id
             post_service = user_request_service_chain[user_request_service_chain.index(pre_service) + 1]  # service_id
             # pre_service_comp_cost = (microservice_cluster[pre_service].dataVol / constellation.satellites_group[pre_sa].computing_cab) / 2
-            pre_service_comp_cost = get_microservice_computing_cost(
-                constellation=constellation,
-                satellite=pre_sa,
-                microservice_cluster=microservice_cluster,
-                microservice_id=pre_service
-            )
+            pre_service_comp_cost = 0
             # 1^1 -> 3 -> 1^2
             service_satellite_edges.append((f"{pre_service}-{2 * i + 1}", f"{pre_service}M={pre_sa}S"))
             service_satellite_edge_weights.append(pre_service_comp_cost)
@@ -147,12 +142,7 @@ def construct_satellite_microservice_chain_colocation_di_graph(
     last_service = user_request_service_chain[-1]
     for i, satellite in enumerate(service_satellite_pair[last_service]):
         # service_comp_cost = (microservice_cluster[last_service].dataVol / constellation.satellites_group[satellite].computing_cab) / 2
-        service_comp_cost = get_microservice_computing_cost(
-            constellation=constellation,
-            satellite=satellite,
-            microservice_cluster=microservice_cluster,
-            microservice_id=last_service
-        )
+        service_comp_cost = 0
         service_satellite_edges.append((f"{last_service}-{2 * i + 1}", f"{last_service}M={satellite}S"))
         service_satellite_edge_weights.append(service_comp_cost)
         service_satellite_edges.append((f"{last_service}M={satellite}S", f"{last_service}-{2 * i + 2}"))
@@ -211,25 +201,6 @@ def construct_satellite_microservice_tree_colocation_di_graph(
             CTG = nx.relabel_nodes(CTG, mapping, copy=True)
         child_tree_graphs.append(CTG)
 
-    # re-construct endpoint satellite for each branch of tree, replace the last satellite number with "number-idx"
-    # satellite_ep = constellation.satellites_group[-1]  # satellite end-point no.-1
-    # for i, child_tree_graph in enumerate(child_tree_graphs[1:]):
-    #     pre_service = user_request_service_tree[i + 1][-1]
-    #     add_ep_service_satellite_edges = []
-    #     add_ep_service_satellite_edge_weights = []
-    #
-    #     for satellite in microservice_satellite_pairs[pre_service]:
-    #         service_comp_cost = (microservice_cluster[pre_service].dataVol /
-    #                              constellation.satellites_group[pre_service].computing_cab) / 2
-    #         shortest_path_length = nx.shortest_path_length(constellation_topo_graph, source=satellite, target=satellite_ep.id)
-    #         communication_cost = (constellation.get_satellite_transmitter_power_by_id(satellite, shortest_path_length) *
-    #                               (constellation.link_data_rate / microservice_cluster[pre_service].dataVol))
-    #         add_ep_service_satellite_edges.append((f"{pre_service}-{2 * i + 2}", f"{satellite_ep.id}-{i + 1}"))
-    #         add_ep_service_satellite_edge_weights.append(service_comp_cost + communication_cost)
-    #     child_tree_graph.add_edges_from(add_ep_service_satellite_edges)
-    #     for edge, weight in zip(add_ep_service_satellite_edges, add_ep_service_satellite_edge_weights):
-    #         child_tree_graph.edges[edge]['weight'] = weight
-
     cross_service = user_request_service_tree[0][-1]
     service_needs_to_reconnect = [user_request_service_tree[i][0] for i in range(1, len(user_request_service_tree))]
 
@@ -238,9 +209,6 @@ def construct_satellite_microservice_tree_colocation_di_graph(
     for post_service in service_needs_to_reconnect:
         for i, pre_sa in enumerate(microservice_satellite_pairs[cross_service]):
             for j, post_sa in enumerate(microservice_satellite_pairs[post_service]):  # satellite_id
-                # shortest_path_length = nx.shortest_path_length(constellation_topo_graph, source=pre_sa, target=post_sa)
-                # communication_cost = (constellation.get_satellite_transmitter_power_by_id(pre_sa, shortest_path_length) *
-                #                       (constellation.link_data_rate / microservice_cluster[cross_service].dataVol))
                 communication_cost = get_satellite_pair_communication_cost(
                     constellation=constellation, constellation_topo_graph=constellation_topo_graph,
                     source_satellite=pre_sa, target_satellite=post_sa,
@@ -248,7 +216,6 @@ def construct_satellite_microservice_tree_colocation_di_graph(
                 )
                 add_service_satellite_edges.append((f"{cross_service}-{2 * i + 2}", f"{post_service}-{2 * j + 1}"))
                 add_service_satellite_edge_weights.append(communication_cost)
-    # ret_tree = nx.compose_all(child_tree_graphs)
     ret_tree = merge_graphs(child_tree_graphs)
     ret_tree.add_edges_from(add_service_satellite_edges)
     for edge, weight in zip(add_service_satellite_edges, add_service_satellite_edge_weights):
@@ -264,9 +231,6 @@ def construct_satellite_microservice_chain_colocation_di_graph2(
         for satellite in constellation.satellites_group:
             if service in satellite.microservice_set:
                 service_satellite_pair[service].append(satellite.id)
-    # print(f"Microservice-Satellite colocation: {service_satellite_pair}")
-
-    # construct the satellite-microservice colocation graph
     service_satellite_edges = []
     service_satellite_edge_weights = []
     pre_service_comp_cost, post_service_comp_cost = [], []
@@ -279,9 +243,7 @@ def construct_satellite_microservice_chain_colocation_di_graph2(
             source_satellite=satellite_sp.id, target_satellite=sa,
             microservice_cluster=microservice_cluster, microservice_id=user_request_service_chain[0]
         )
-        service_comp_cost = get_microservice_computing_cost(
-            constellation=constellation, satellite=sa,
-            microservice_cluster=microservice_cluster, microservice_id=user_request_service_chain[0])
+        service_comp_cost = 0
         service_satellite_edges.append((satellite_sp.id, f"{user_request_service_chain[0]}M={sa}S"))
         service_satellite_edge_weights.append(communication_cost + service_comp_cost)
 
@@ -291,9 +253,7 @@ def construct_satellite_microservice_chain_colocation_di_graph2(
         for i, pre_sa in enumerate(service_satellite_pair[pre_service]):  # satellite_id where service deployed
             post_service = user_request_service_chain[user_request_service_chain.index(pre_service) + 1]  # service_id
             for j, post_sa in enumerate(service_satellite_pair[post_service]):  # satellite_id
-                service_comp_cost = get_microservice_computing_cost(
-                    constellation=constellation, satellite=post_sa,
-                    microservice_cluster=microservice_cluster, microservice_id=post_service)
+                service_comp_cost = 0
                 communication_cost = get_satellite_pair_communication_cost(
                     constellation=constellation, constellation_topo_graph=constellation_topo_graph,
                     source_satellite=pre_sa, target_satellite=post_sa,
@@ -376,13 +336,5 @@ def construct_satellite_microservice_fix_topo_tree_colocation_di_graph(
         mapping = {constellation.satellites_group[-1].id: f"{constellation.satellites_group[-1].id}-{i + 1}"}
         CTG = nx.relabel_nodes(CTG, mapping, copy=True)
         child_tree_graphs.append(CTG)
-
-    # for ctg in child_tree_graphs:
-    #     print(f">>>>>>>>>>>>>>>>>>>>>>... child_tree_graph(communication greedy) is: {ctg} ")
-    #     print(ctg.nodes)
-    #     print(ctg.edges)
     augmented_graph = merge_graphs(child_tree_graphs)
-    # print(f">>>>>>>>>>>>>>>>>>>>>>... ret_tree(communication greedy) is: {ret_tree} ")
-    # print(ret_tree.nodes)
-    # print(ret_tree.edges)
     return augmented_graph

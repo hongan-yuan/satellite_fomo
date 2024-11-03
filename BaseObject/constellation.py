@@ -140,7 +140,8 @@ class Constellation:
             s_comp_cap = self.satellites_computing_cap[random.randint(0, len(self.satellites_computing_cap) - 1)]
             s_power = s_comp_cap / 100  # rated computing power
             self.satellites_group.append(
-                Satellite(id=satellite_idx, computing_cab=s_comp_cap, power=s_power, transmit_gain=10000, receiver_gain=10000))
+                # Satellite(id=satellite_idx, computing_cab=s_comp_cap, power=s_power, transmit_gain=10000, receiver_gain=10000))
+                Satellite(id=satellite_idx, computing_cab=s_comp_cap, power=s_power, transmit_gain=transmit_gains, receiver_gain=receiver_gains))
         self.satellites_group[0].isStartPoint = True
         self.satellites_group[-1].isEndPoint = True
 

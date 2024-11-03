@@ -79,6 +79,7 @@ if __name__ == '__main__':
     # constellation.update_satellite_pos(random.randint(100, 1000))
     constellation_g = construct_constellation_graph(constellation)
 
+
     cnt = 0
     err_list = []
     cost_list = []
